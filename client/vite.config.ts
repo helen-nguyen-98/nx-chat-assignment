@@ -14,10 +14,7 @@ export default defineConfig({
     host: 'localhost',
   },
   plugins: [react()],
-  // Uncomment this if you are using workers.
-  // worker: {
-  //  plugins: [ nxViteTsPaths() ],
-  // },
+  // Remove the manual PostCSS configuration as it will use postcss.config.js
   build: {
     outDir: './dist',
     emptyOutDir: true,
