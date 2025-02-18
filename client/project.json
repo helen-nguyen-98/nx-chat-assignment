@@ -1,0 +1,12 @@
+{
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/client"],
+      "options": {
+        "passWithNoTests": true,
+        "reportsDirectory": "../../coverage/client"
+      }
+    }
+  }
+} 

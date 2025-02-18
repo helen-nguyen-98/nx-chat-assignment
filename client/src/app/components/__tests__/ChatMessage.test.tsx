@@ -5,29 +5,29 @@ import { ChatMessage } from '../ChatMessage';
 
 describe('ChatMessage', () => {
   const mockMessage = {
-    id: '1',
-    content: 'Hello world',
+    message: 'Hello world',
     timestamp: new Date().toISOString(),
-    senderId: '1',
-    receiverId: '2'
+    sender: { id: '1', username: 'sender', online: true },
+    receiver: { id: '2', username: 'receiver', online: true }
   };
 
   it('renders message content correctly', () => {
     render(<ChatMessage message={mockMessage} isCurrentUser={false} />);
-    expect(screen.getByText('Hello world')).toBeInTheDocument();
+    const messageElement = screen.getByText('Hello world');
+    expect(messageElement).toBeInTheDocument();
   });
 
   it('applies correct styling for current user messages', () => {
     const { container } = render(<ChatMessage message={mockMessage} isCurrentUser={true} />);
-    const messageDiv = container.firstChild as HTMLElement;
-    expect(messageDiv.className).toContain('justify-end');
-    expect(messageDiv.className).toContain('bg-blue-500');
+    const messageDiv = container.firstChild;
+    expect(messageDiv).toBeInTheDocument();
+    expect(messageDiv).toHaveStyle('margin-left: auto');
   });
 
   it('applies correct styling for other user messages', () => {
     const { container } = render(<ChatMessage message={mockMessage} isCurrentUser={false} />);
-    const messageDiv = container.firstChild as HTMLElement;
-    expect(messageDiv.className).toContain('bg-gray-200');
-    expect(messageDiv.className).not.toContain('justify-end');
+    const messageDiv = container.firstChild;
+    expect(messageDiv).toBeInTheDocument();
+    expect(messageDiv).toHaveStyle('margin-left: 0');
   });
 }); 

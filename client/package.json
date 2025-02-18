@@ -3,12 +3,15 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "framer-motion": "^12.4.3",
+    "jest": "^29.7.0",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
@@ -16,7 +19,27 @@
     "@testing-library/react": "^16.2.0",
     "@types/jest": "^29.5.14",
     "autoprefixer": "^10.4.14",
+    "jest-environment-jsdom": "^29.7.0",
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-react": "^7.23.3",
+    "@babel/preset-typescript": "^7.23.3",
+    "babel-jest": "^29.7.0",
+    "identity-obj-proxy": "^3.0.0",
     "postcss": "^8.4.21",
     "tailwindcss": "^3.3.1"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": ["<rootDir>/src/setupTests.ts"],
+    "moduleNameMapper": {
+      "\\.(css|less|scss|sass)$": "identity-obj-proxy",
+      "^@nx-chat-assignment/shared-models$": "<rootDir>/../shared-models/src/index.ts"
+    },
+    "transform": {
+      "^.+\\.(ts|tsx|js|jsx)$": "babel-jest"
+    },
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json"],
+    "testRegex": ".*\\.test\\.(ts|tsx)$",
+    "roots": ["<rootDir>/src"]
   }
 }

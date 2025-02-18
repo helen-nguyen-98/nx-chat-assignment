@@ -1,6 +1,7 @@
-/// <reference types='vitest' />
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
+import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
 
 export default defineConfig({
   root: __dirname,
@@ -13,7 +14,7 @@ export default defineConfig({
     port: 4300,
     host: 'localhost',
   },
-  plugins: [react()],
+  plugins: [react(), nxViteTsPaths()],
   // Remove the manual PostCSS configuration as it will use postcss.config.js
   build: {
     outDir: './dist',
@@ -23,4 +24,17 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
   },
+  test: {
+    globals: true,
+    cache: {
+      dir: '../node_modules/.vitest'
+    },
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    reporters: ['default'],
+    coverage: {
+      reportsDirectory: '../coverage/client',
+      provider: 'v8'
+    }
+  }
 });
