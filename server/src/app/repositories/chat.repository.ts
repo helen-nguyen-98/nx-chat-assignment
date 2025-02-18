@@ -5,12 +5,12 @@ const chatHistory: ChatHistory = [];
 let onlineUsers: OnlineUsers = [];
 
 export const ChatRepository = {
-  getHistory: (userId: string, receiverId: string): ChatHistory =>
+  getHistory: (userName: string, receiverName: string): ChatHistory =>
     chatHistory
       .filter(
         (msg) =>
-          (msg.sender.id === userId && msg.receiver.id === receiverId) ||
-          (msg.sender.id === receiverId && msg.receiver.id === userId),
+          (msg.sender.username === userName && msg.receiver.username === receiverName) ||
+          (msg.sender.username === receiverName && msg.receiver.username === userName),
       )
       .slice(-50),
 
@@ -38,8 +38,8 @@ export const ChatRepository = {
     return onlineUsers;
   },
 
-  removeUser: (userId: string) => {
-    onlineUsers = onlineUsers.filter((user) => user.id !== userId);
+  removeUser: (userName: string) => {
+    onlineUsers = onlineUsers.filter((user) => user.id !== userName);
     return onlineUsers;
   },
 
