@@ -7,8 +7,14 @@ function ChatApp() {
   const { currentUser } = useChat();
 
   return (
-    <div className="p-4">
-      {!currentUser ? <Login /> : <Chat />}
+    <div className="min-h-screen bg-gray-50">
+      {!currentUser ? (
+        <div className="h-screen flex items-center justify-center p-4">
+          <Login />
+        </div>
+      ) : (
+        <Chat />
+      )}
     </div>
   );
 }

@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useCallback,
+  useMemo,
+} from 'react';
 import { io, Socket } from 'socket.io-client';
 import { User, ChatMessage } from '@nx-chat-assignment/shared-models';
 
@@ -7,11 +15,12 @@ interface ChatContextType {
   currentUser: User | null;
   messages: ChatMessage[];
   users: User[];
-  currentChat: User | null;
+  selectedUser: User | null;
   connect: (username: string) => Promise<void>;
   disconnect: () => void;
   sendMessage: (content: string) => void;
-  setCurrentChat: (user: User) => void;
+  setSelectedUser: (user: User | null) => void;
+  socketError: string | null;
 }
 
 interface SocketResponse<T> {
@@ -19,54 +28,85 @@ interface SocketResponse<T> {
   data: T;
 }
 
-const CURRENT_USER_KEY = 'chat_user';
-const CURRENT_USER_CHAT_KEY = 'current_user_chat';
+const LOCAL_STORAGE_KEYS = {
+  USER: 'user',
+  SELECTED_USER: 'selected_user',
+} as const;
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    // Initialize currentUser from localStorage
-    const savedUser = localStorage.getItem(CURRENT_USER_KEY);
+  const [socketConnection, setSocketConnection] = useState<Socket | null>(null);
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem(LOCAL_STORAGE_KEYS.USER);
     return savedUser ? JSON.parse(savedUser) : null;
   });
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [currentChat, setCurrentChat] = useState<User | null>(() => {
-    // Initialize currentUser from localStorage
-    const savedUser = localStorage.getItem(CURRENT_USER_CHAT_KEY);
-    return savedUser ? JSON.parse(savedUser) : null;
+  const [messageHistory, setMessageHistory] = useState<ChatMessage[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(() => {
+    const savedChat = localStorage.getItem(LOCAL_STORAGE_KEYS.SELECTED_USER);
+    return savedChat ? JSON.parse(savedChat) : null;
   });
+  const [socketError, setSocketError] = useState<string | null>(null);
 
   // Try to reconnect on page load
   useEffect(() => {
-    console.log('Reconnecting...', currentUser?.username);
-
-    if (currentUser?.username) {
-      connect(currentUser.username);
+    if (loggedInUser?.username) {
+      handleConnect(loggedInUser.username);
     }
 
-    if (currentUser && currentChat) {
-      console.log('Loading chat history for:', currentUser.id, currentChat?.id);
-
-      loadChatHistory(currentUser.username, currentChat?.username);
+    if (loggedInUser && selectedUser) {
+      loadChatHistory(loggedInUser.username, selectedUser?.username);
     }
   }, []); // Run only once on mount
 
   useEffect(() => {
-    if (currentChat) {
-      const currentChatNew = users.find((u) => u.username === currentChat?.username);
-      if (currentChatNew) {
-        setCurrentChat(currentChatNew);
-        localStorage.setItem(CURRENT_USER_CHAT_KEY, JSON.stringify(currentChatNew));
-      }
+    console.log('🚀 ~ useEffect ~ onlineUsers:', onlineUsers);
+    if (onlineUsers.length === 0) {
+      return;
     }
-  }, [users, currentChat]);
+    const updatedChatUser = onlineUsers.find((u) => u.username === selectedUser?.username);
+    if (updatedChatUser) {
+      setSelectedUser(updatedChatUser);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.SELECTED_USER, JSON.stringify(updatedChatUser));
+    } else {
+      setSelectedUser(null);
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.SELECTED_USER);
+    }
+  }, [onlineUsers, selectedUser]);
 
-  const connect = async (username: string) => {
+  function setupSocketListeners(socket: Socket, username: string) {
+    socket.on('usersOnline', (response: SocketResponse<User[]>) => {
+      const authenticatedUser = response.data.find((u) => u.username === username);
+      if (authenticatedUser) {
+        setLoggedInUser(authenticatedUser);
+        localStorage.setItem(LOCAL_STORAGE_KEYS.USER, JSON.stringify(authenticatedUser));
+      }
+      setOnlineUsers(response.data.filter((u) => u.username !== username));
+    });
+
+    socket.on('message:receive', (response: SocketResponse<ChatMessage>) => {
+      setMessageHistory((prevMessages) => [...prevMessages, response.data]);
+      if (
+        selectedUser &&
+        loggedInUser &&
+        (response.data.sender.username === selectedUser.username ||
+          response.data.receiver.username === selectedUser.username)
+      ) {
+        loadChatHistory(loggedInUser.username, selectedUser.username);
+      }
+    });
+
+    socket.on('error', (error: { message: string }) => {
+      console.error('Socket error:', error.message);
+      setSocketError(error.message);
+      return error;
+    });
+  }
+
+  const handleConnect = useCallback(async (username: string) => {
+    setSocketError(null);
     try {
-      // establish socket connection
       const socket = io('http://localhost:4000', {
         transports: ['websocket'],
       });
@@ -75,115 +115,100 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         socket.emit('user:login', username);
       });
 
-      socket.on('usersOnline', (response: SocketResponse<User[]>) => {
-        console.log('Users online:', response);
-        const user = response.data.find((u) => u.username === username);
-        if (user) {
-          setCurrentUser(user);
-          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-        }
-
-        setUsers(response.data.filter((u) => u.username !== username));
-      });
-
-      socket.on('message:receive', (response: SocketResponse<ChatMessage>) => {
-        console.log('🚀 ~ socket.on ~ response:', response);
-        setMessages((prev) => [...prev, response.data]);
-        // If this is a message for the current chat, load the updated history
-        console.log('Current chat:', currentChat, 'Current user:', currentUser);
-
-        if (
-          currentChat &&
-          currentUser &&
-          (response.data.sender.id === currentChat.id ||
-            response.data.receiver.id === currentChat.id)
-        ) {
-          loadChatHistory(currentUser.username, currentChat.username);
-        }
-      });
-
-      socket.on('error', (error: { message: string }) => {
-        console.error('Socket error:', error.message);
-        // Clear stored user on error
-        // localStorage.clear();
-        // setCurrentUser(null);
-        // setCurrentChat(null);
-        return error;
-      });
-
-      setSocket(socket);
+      setupSocketListeners(socket, username);
+      setSocketConnection(socket);
     } catch (error) {
       console.error('Connection error:', error);
-      // Clear stored user on error
       localStorage.clear();
-      setCurrentUser(null);
+      setLoggedInUser(null);
+      setSocketError(error instanceof Error ? error.message : 'Failed to connect');
       throw error;
     }
-  };
+  }, []);
 
-  const disconnect = async () => {
-    if (socket && currentUser) {
+  const handleDisconnect = useCallback(async () => {
+    console.log("🚀 ~ handleDisconnect ~ socketConnection:", socketConnection)
+    if (socketConnection && loggedInUser) {
       try {
-        socket.disconnect();
-        setSocket(null);
-        setCurrentUser(null);
-        setMessages([]);
-        setUsers([]);
+        socketConnection.disconnect();
+        setSocketConnection(null);
+        setLoggedInUser(null);
+        setMessageHistory([]);
+        setOnlineUsers([]);
         localStorage.clear();
       } catch (error) {
         console.error('Logout error:', error);
       }
     }
-  };
+  }, [socketConnection, loggedInUser]);
 
-  const sendMessage = (message: string) => {
-    if (socket && currentUser && currentChat) {
-      const payload = {
-        receiver: currentChat,
-        message: message,
-      };
-      socket.emit('message:send', payload);
-    }
-  };
+  const handleSendMessage = useCallback(
+    (messageContent: string) => {
+      if (socketConnection && loggedInUser && selectedUser) {
+        const messagePayload = {
+          receiver: selectedUser,
+          message: messageContent,
+        };
+        socketConnection.emit('message:send', messagePayload);
+      }
+    },
+    [socketConnection, loggedInUser, selectedUser],
+  );
 
-  const loadChatHistory = async (userId: string, receiverId: string) => {
+  const loadChatHistory = async (senderId: string, receiverId: string) => {
     try {
       const response = await fetch(
-        `http://localhost:4000/api/messages/history/${userId}/${receiverId}`,
+        `http://localhost:4000/api/messages/history/${senderId}/${receiverId}`,
       );
       if (!response.ok) {
         throw new Error('Failed to load chat history');
       }
       const history = await response.json();
-      setMessages(history);
+      setMessageHistory(history);
     } catch (error) {
       console.error('Failed to load chat history:', error);
     }
   };
 
-  return (
-    <ChatContext.Provider
-      value={{
-        socket,
-        currentUser,
-        messages,
-        users,
-        currentChat,
-        connect,
-        disconnect,
-        sendMessage,
-        setCurrentChat: (user: User) => {
-          setCurrentChat(user);
-          localStorage.setItem(CURRENT_USER_CHAT_KEY, JSON.stringify(user));
-          if (currentUser) {
-            loadChatHistory(currentUser.username, user.username);
-          }
-        },
-      }}
-    >
-      {children}
-    </ChatContext.Provider>
+  const handleSetSelectedUser = useCallback(
+    (user: User | null) => {
+      setSelectedUser(user);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.SELECTED_USER, JSON.stringify(user));
+      if (loggedInUser && user) {
+        loadChatHistory(loggedInUser.username, user.username);
+      }
+    },
+    [loggedInUser],
   );
+
+  const contextValue = useMemo(
+    () => ({
+      socket: socketConnection,
+      currentUser: loggedInUser,
+      messages: messageHistory,
+      users: onlineUsers,
+      selectedUser: selectedUser,
+      connect: handleConnect,
+      disconnect: handleDisconnect,
+      sendMessage: handleSendMessage,
+      setSelectedUser: handleSetSelectedUser,
+      socketError,
+    }),
+    [
+      socketConnection,
+      loggedInUser,
+      messageHistory,
+      onlineUsers,
+      selectedUser,
+      handleConnect,
+      handleDisconnect,
+      handleSendMessage,
+      handleSetSelectedUser,
+      socketError,
+    ],
+  );
+
+  return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;
 }
 
 export function useChat() {

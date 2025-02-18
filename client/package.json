@@ -2,6 +2,9 @@
   "name": "@nx-chat-assignment/client",
   "version": "0.0.1",
   "private": true,
+  "scripts": {
+    "test": "jest"
+  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
@@ -9,6 +12,9 @@
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@types/jest": "^29.5.14",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.21",
     "tailwindcss": "^3.3.1"
