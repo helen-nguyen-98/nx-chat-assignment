@@ -61,7 +61,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, []); // Run only once on mount
 
   useEffect(() => {
-    console.log('🚀 ~ useEffect ~ onlineUsers:', onlineUsers);
     if (onlineUsers.length === 0) {
       return;
     }
@@ -127,7 +126,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleDisconnect = useCallback(async () => {
-    console.log("🚀 ~ handleDisconnect ~ socketConnection:", socketConnection)
     if (socketConnection && loggedInUser) {
       try {
         socketConnection.disconnect();

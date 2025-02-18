@@ -6,7 +6,7 @@ interface Props {
   users: User[];
   currentUser: User;
   selectedUser: User | null;
-  onUserSelect: (user: User) => void;
+  onUserSelect: (user: User | null) => void;
   onLogout: () => void;
 }
 

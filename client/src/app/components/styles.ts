@@ -48,6 +48,7 @@ export const ChatHeader = styled.div`
 export const MessageContainer = styled.div<{ isCurrentUser: boolean }>`
   display: flex;
   flex-direction: column;
+  width: fit-content;
   max-width: 85%;
   padding: 0.75rem;
   border-radius: 0.5rem;
