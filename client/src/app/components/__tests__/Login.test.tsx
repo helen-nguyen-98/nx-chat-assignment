@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Login } from '../Login';
-import { ChatProvider } from '../../contexts/ChatContext';
 
 // Mock the ChatContext
 jest.mock('../../contexts/ChatContext', () => ({

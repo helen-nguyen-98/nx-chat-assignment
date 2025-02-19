@@ -23,45 +23,31 @@ export function Chat() {
   // Get the current online status of selected user
   const isSelectedUserOnline = useMemo(() => {
     if (!selectedUser) return false;
-    return onlineUsers.some(user => user.username === selectedUser.username);
+    return onlineUsers.some((user) => user.username === selectedUser.username);
   }, [onlineUsers, selectedUser]);
 
-  const scrollToBottom = useCallback(
-    (forceScroll = false) => {
-      if (chatMessagesRef.current && (isNearBottom || forceScroll)) {
-        const container = chatMessagesRef.current;
-        const { scrollHeight, clientHeight } = container;
-        container.scrollTop = scrollHeight - clientHeight;
-      }
-    },
-    [isNearBottom],
-  );
+  const scrollToBottom = useCallback(() => {
+    if (chatMessagesRef.current) {
+      const container = chatMessagesRef.current;
+      const { scrollHeight, clientHeight } = container;
+      container.scrollTop = scrollHeight - clientHeight;
+    }
+  }, []);
 
   const handleScrollChange = useCallback(() => {
     if (chatMessagesRef.current) {
       const { scrollHeight, clientHeight, scrollTop } = chatMessagesRef.current;
       const scrollThreshold = 100; // pixels from bottom
       const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-      setIsNearBottom(distanceFromBottom < scrollThreshold);
+      const nearBottom = distanceFromBottom < scrollThreshold;
+      setIsNearBottom(nearBottom);
     }
   }, []);
 
+  // Only scroll on new messages
   useEffect(() => {
     scrollToBottom();
   }, [chatHistory, scrollToBottom]);
-
-  useEffect(() => {
-    const messagesContainer = chatMessagesRef.current;
-    if (messagesContainer) {
-      messagesContainer.addEventListener('scroll', handleScrollChange);
-      return () => messagesContainer.removeEventListener('scroll', handleScrollChange);
-    }
-  }, [handleScrollChange]);
-
-  useEffect(() => {
-    scrollToBottom(true);
-    setIsNearBottom(true);
-  }, [selectedUser, scrollToBottom]);
 
   const handleSubmitMessage = useCallback(
     (event: React.FormEvent) => {
@@ -70,8 +56,8 @@ export function Chat() {
       if (trimmedMessage) {
         sendChatMessage(trimmedMessage);
         setMessageInput('');
-        // Force scroll to bottom after sending with small delay to ensure message is rendered
-        setTimeout(() => scrollToBottom(true), 100);
+        // Force scroll to bottom after sending
+        scrollToBottom();
       }
     },
     [messageInput, sendChatMessage, scrollToBottom],
@@ -161,34 +147,57 @@ export function Chat() {
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800">
-                      User is offline
-                    </h3>
+                    <h3 className="text-sm font-medium text-yellow-800">User is offline</h3>
                     <div className="mt-2 text-sm text-yellow-700">
-                      <p>
-                        Messages will be delivered when they come back online.
-                      </p>
+                      <p>Messages will be delivered when they come back online.</p>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            <div
-              ref={chatMessagesRef}
-              className="flex-1 overflow-y-auto space-y-2 px-4 pb-4"
-              onScroll={handleScrollChange}
-            >
-              <div className="flex flex-col space-y-2 mx-auto w-full pt-4">
-                {filteredMessages.map((message, index) => (
-                  <ChatMessage
-                    key={index}
-                    message={message}
-                    isCurrentUser={message.sender.username === currentUser?.username}
-                  />
-                ))}
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <div
+                ref={chatMessagesRef}
+                className="flex-1 overflow-y-auto"
+                onScroll={handleScrollChange}
+              >
+                <div className="px-4 py-4 space-y-2">
+                  {filteredMessages.map((message, index) => (
+                    <ChatMessage
+                      key={index}
+                      message={message}
+                      isCurrentUser={message.sender.username === currentUser?.username}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
+
+            {!isNearBottom && (
+              <button
+                onClick={() => {
+                  scrollToBottom();
+                }}
+                className="fixed bottom-20 right-8 bg-blue-500 text-white p-2 rounded-full shadow-lg hover:bg-blue-600 transition-colors"
+                aria-label="Scroll to bottom"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                  />
+                </svg>
+              </button>
+            )}
 
             <InputContainer>
               <form onSubmit={handleSubmitMessage}>
@@ -196,14 +205,14 @@ export function Chat() {
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder={isSelectedUserOnline ? "Type a message..." : "User is offline"}
+                  placeholder={isSelectedUserOnline ? 'Type a message...' : 'User is offline'}
                   disabled={!isSelectedUserOnline}
                 />
                 <button
                   type="submit"
                   className={`px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap ${
-                    isSelectedUserOnline 
-                      ? 'bg-blue-500 hover:bg-blue-600' 
+                    isSelectedUserOnline
+                      ? 'bg-blue-500 hover:bg-blue-600'
                       : 'bg-gray-400 cursor-not-allowed'
                   }`}
                   disabled={!isSelectedUserOnline}

@@ -18,27 +18,24 @@ export const ChatContainer = styled.div`
 `;
 
 export const ChatMainContainer = styled.div`
+  display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100vw;
   background: white;
   z-index: 10;
-  display: flex;
+  overflow: hidden;
 
   @media (min-width: 768px) {
-    position: relative;
     height: 100%;
     width: 100%;
     border-radius: 0.5rem;
     border: 1px solid #e5e7eb;
-    overflow: hidden;
   }
 `;
 
 export const ChatHeader = styled.div`
-  position: sticky;
-  top: 0;
-  z-index: 20;
+  flex-shrink: 0;
   background-color: white;
   padding: 1rem;
   border-bottom: 1px solid #e5e7eb;
@@ -63,8 +60,7 @@ export const MessageContainer = styled.div<{ isCurrentUser: boolean }>`
 `;
 
 export const InputContainer = styled.div`
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
   background-color: white;
   padding: 1rem;
   border-top: 1px solid #e5e7eb;
